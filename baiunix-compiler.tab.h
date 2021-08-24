@@ -34,8 +34,8 @@
 /* Undocumented macros, especially those whose name start with YY_,
    are private implementation details.  Do not rely on them.  */
 
-#ifndef YY_YY_LATEX_TO_MARKDOWN_TAB_H_INCLUDED
-# define YY_YY_LATEX_TO_MARKDOWN_TAB_H_INCLUDED
+#ifndef YY_YY_BAIUNIX_COMPILER_TAB_H_INCLUDED
+# define YY_YY_BAIUNIX_COMPILER_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -49,26 +49,20 @@ extern int yydebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
-    NAME = 258,
-    CONTENT = 259,
-    NUMBER = 260,
-    DOCUMENT = 261,
-    _BEGIN = 262,
-    _END = 263,
-    CLASS = 264,
-    PACKAGE = 265,
-    AUTHOR = 266,
-    TITLE = 267,
-    CHAPTER = 268,
-    SECTION = 269,
-    SUBSECTION = 270,
-    PAR = 271,
-    BF = 272,
-    UNDERLINE = 273,
-    IT = 274,
-    ITEM = 275,
-    ENUMERATE = 276,
-    ITEMIZE = 277
+    NUMBER = 258,
+    NAME = 259,
+    FUNC = 260,
+    EOL = 261,
+    AND = 262,
+    OR = 263,
+    IF = 264,
+    THEN = 265,
+    ELSE = 266,
+    WHILE = 267,
+    DO = 268,
+    FOR = 269,
+    LET = 270,
+    CMP = 271
   };
 #endif
 
@@ -76,12 +70,15 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 8 "latex-to-markdown.y"
-   
-    struct ast *a;
-    char *string;
+#line 6 "baiunix-compiler.y"
 
-#line 85 "latex-to-markdown.tab.h"
+    struct ast *a;
+    double d;
+    struct symbol *s;       /* qual símbolo ? */
+    struct symlist *sl;     
+    int fn;                 /* qual função ? */
+
+#line 82 "baiunix-compiler.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -94,4 +91,4 @@ extern YYSTYPE yylval;
 
 int yyparse (void);
 
-#endif /* !YY_YY_LATEX_TO_MARKDOWN_TAB_H_INCLUDED  */
+#endif /* !YY_YY_BAIUNIX_COMPILER_TAB_H_INCLUDED  */

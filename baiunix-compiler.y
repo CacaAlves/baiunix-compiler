@@ -1,234 +1,133 @@
 %{
-    #include <stdio.h>
-    #include <stdlib.h>
-    #include "latex-to-markdown.h"
+    #include "baiunix-compiler.h"
 %}
 
 %union
-{   
+{
     struct ast *a;
-    char *string;
+    double d;
+    struct symbol *s;       /* qual símbolo ? */
+    struct symlist *sl;     
+    int fn;                 /* qual função ? */
 };
 
-%token <string> NAME
-%token <string> CONTENT
-%token NUMBER
-// keywords
-%token DOCUMENT
-%token _BEGIN
-%token _END
-%token CLASS
-%token PACKAGE
-%token AUTHOR 
-%token TITLE
-%token CHAPTER
-%token SECTION
-%token SUBSECTION
-%token PAR
-%token BF
-%token UNDERLINE
-%token IT
-%token <string> ITEM
-%token ENUMERATE
-%token ITEMIZE
+/* declaração de tokens */
+%token <d> NUMBER;
+%token <s> NAME;
+%token <fn> FUNC;
+%token EOL;
+%token AND OR
 
-%type <a> documentLatex identification settings class package main begin end bodyList chapter section subsection body text textStyle lists numberedList itemList itens
+%token IF THEN ELSE WHILE DO FOR LET
+
+%nonassoc <fn> CMP
+%right '='
+%left '+' '-'
+%left '*' '/'
+%left AND OR
+
+%type <a> exp stmt list explist cmp
+%type <sl> symlist
+
+%start calclist
 
 %%
 
-documentLatex: settings identification main {
-    $$ = newast(NT_DOCUMENT, $1, $2, $3, NULL);
-    eval($$);
+stmt: IF exp THEN list {
+    $$ = newflow('I', $2, $4, NULL, NULL);
 }
-| settings main {
-    $$ = newast(NT_DOCUMENT, $1, $2, NULL, NULL);
-    eval($$);
+| IF exp THEN list ELSE list {
+    $$ = newflow('I', $2, $4, $6, NULL);
 }
-;
-
-settings: class package {
-    $$ = newast(NT_SETTINGS, $1, $2, NULL, NULL);
+| WHILE exp DO list {
+    $$ = newflow('W', $2, $4, NULL, NULL);
 }
-| class {
-    $$ = newast(NT_SETTINGS, $1, NULL, NULL, NULL);
-}
-;
-
-class: CLASS NAME NAME {
-    $$ = newclass(NT_CLASS, $2, $3);   
-}
-;
-
-package: PACKAGE NAME {
-    $$ = newpackage(NT_PACKAGE, $2, NULL, NULL);  
-}
-| PACKAGE NAME NAME {
-    $$ = newpackage(NT_PACKAGE, $2, $3, NULL);
+| FOR '(' exp ';' exp ';' exp ')' list {
+    $$ = newflow('O', $3, $5, $7, $9);
 } 
-| PACKAGE NAME package {
-    $$ = newpackage(NT_PACKAGE, $2, NULL, $3);
+| exp
+;
+
+list: /* vazio */ {
+    $$ = NULL;
 }
-| PACKAGE NAME NAME package {
-    $$ = newpackage(NT_PACKAGE, $2, $3, $4);
+| stmt ';' list {
+    if ($3 == NULL) 
+        $$ = $1;
+    else
+        $$ = newast('L', $1, $3);
 }
 ;
 
-identification: TITLE CONTENT AUTHOR CONTENT {
-    $$ = newidentification(NT_IDENTIFICATION, $2, $4);
-} 
-| TITLE NAME AUTHOR CONTENT {
-    $$ = newidentification(NT_IDENTIFICATION, $2, $4);
+exp: cmp 
+| exp '+' exp {
+    $$ = newast('+', $1, $3);
 }
-| TITLE CONTENT AUTHOR NAME {
-    $$ = newidentification(NT_IDENTIFICATION, $2, $4);
+| exp '-' exp {
+    $$ = newast('-', $1, $3);
 }
-| TITLE NAME AUTHOR NAME {
-    $$ = newidentification(NT_IDENTIFICATION, $2, $4);
+| exp '*' exp {
+    $$ = newast('*', $1, $3);
 }
-| TITLE CONTENT {
-    $$ = newidentification(NT_IDENTIFICATION, $2, NULL);
-} 
-| TITLE NAME {
-    $$ = newidentification(NT_IDENTIFICATION, $2, NULL);
+| exp '/' exp {
+    $$ = newast('/', $1, $3);
 }
-;
-
-main: begin end {
-    $$ = newast(NT_MAIN, $1, $2, NULL, NULL);
+| '('exp')' {
+    $$ = $2;
 }
-| begin bodyList end {
-    $$ = newast(NT_MAIN, $1, $3, $2, NULL);
-}
-;
-
-begin: _BEGIN DOCUMENT {
-    $$ = newast(NT_BEGIN, NULL, NULL, NULL, NULL);
-}
-;
-
-
-end: _END DOCUMENT {
-    $$ = newast(NT_END, NULL, NULL, NULL, NULL);
-}
-;
-
-bodyList: chapter bodyList {
-    $$ = newast(NT_BODYLIST, $1, $2, NULL, NULL);
-}
-| chapter {
-    $$ = newast(NT_BODYLIST, $1, NULL, NULL, NULL);
-}
-| section bodyList {
-    $$ = newast(NT_BODYLIST, $1, $2, NULL, NULL);
-}
-| section {
-    $$ = newast(NT_BODYLIST, $1, NULL, NULL, NULL);
-}
-| subsection bodyList {
-    $$ = newast(NT_BODYLIST, $1, $2, NULL, NULL);
-}
-| subsection {
-    $$ = newast(NT_BODYLIST, $1, NULL, NULL, NULL);
-}
-| body bodyList {
-    $$ = newast(NT_BODYLIST, $1, $2, NULL, NULL);
-}
-| body {
-    $$ = newast(NT_BODYLIST, $1, NULL, NULL, NULL);
-}
-;
-
-chapter: CHAPTER CONTENT {
-    $$ = newtextsubdivision(NT_CHAPTER, $2, NULL, NULL);
-}
-| CHAPTER NAME {
-    $$ = newtextsubdivision(NT_CHAPTER, $2, NULL, NULL);
-}
-;
-
-section: SECTION CONTENT {
-    $$ = newtextsubdivision(NT_SECTION, $2, NULL, NULL);    
-}
-| SECTION NAME {
-    $$ = newtextsubdivision(NT_SECTION, $2, NULL, NULL);    
-}
-;
-
-subsection: SUBSECTION CONTENT {
-    $$ = newtextsubdivision(NT_SUBSECTION, $2, NULL, NULL);
-} 
-| SUBSECTION NAME {
-    $$ = newtextsubdivision(NT_SUBSECTION, $2, NULL, NULL);
-} 
-;
-
-body: text {
-    $$ = newast(NT_BODY, $1, NULL, NULL, NULL);
-} 
-| textStyle {
-    $$ = newast(NT_BODY, $1, NULL, NULL, NULL);
-} 
-| lists {
-    $$ = newast(NT_BODY, $1, NULL, NULL, NULL);
-}
-;
-
-text: NAME text {
-    $$ = newtext(NT_TEXT, $1, $2);
-}
-| NAME PAR {
-    $$ = newtext(NT_TEXT, $1, NULL);
+| NUMBER {
+    $$ = newnum($1);
 }
 | NAME {
-    $$ = newtext(NT_TEXT, $1, NULL);
+    $$ = newref($1);
 }
-| PAR {
-    char *space = (char *) malloc(sizeof(char));
-    (*space) = ' '; 
-    $$ = newtext(NT_TEXT, space, NULL);
+| NAME '=' exp {
+    $$ = newasgn($1, $3);
+}
+| FUNC '(' explist ')' {
+    $$ = newfunc($1, $3);
+}
+| NAME '(' explist ')' {
+    $$ = newcall($1, $3);
 }
 ;
 
-textStyle: BF NAME {
-    $$ = newtextstyle(NT_TEXTSTYLE, $2, TS_BOLD);
+cmp: exp CMP exp {
+    $$ = newcmp($2, $1, $3, NULL, 0);
 } 
-| BF CONTENT {
-    $$ = newtextstyle(NT_TEXTSTYLE, $2, TS_BOLD);
+|  exp CMP exp AND cmp {
+    $$ = newcmp($2, $1, $3, $5, 1);
 } 
-| UNDERLINE NAME {
-    $$ = newtextstyle(NT_TEXTSTYLE, $2, TS_UNDERLINE);
-} 
-| UNDERLINE CONTENT {
-    $$ = newtextstyle(NT_TEXTSTYLE, $2, TS_UNDERLINE);
-} 
-| IT NAME {
-    $$ = newtextstyle(NT_TEXTSTYLE, $2, TS_ITALIC);
-}
-| IT CONTENT {
-    $$ = newtextstyle(NT_TEXTSTYLE, $2, TS_ITALIC);
+| exp CMP exp OR cmp {
+    $$ = newcmp($2, $1, $3, $5, 2);
 }
 ;
 
-lists: numberedList {
-    $$ = newast(NT_LIST, $1, NULL, NULL, NULL);
-} | itemList {
-    $$ = newast(NT_LIST, $1, NULL, NULL, NULL);
+explist: exp
+| exp ',' explist {
+    $$ = newast('L', $1, $3);
 }
 ;
 
-numberedList: _BEGIN ENUMERATE itens _END ENUMERATE {
-    $$ = newast(NT_NUMBEREDLIST, $3, NULL, NULL, NULL);
+symlist: NAME {
+    $$ = newsymlist($1, NULL);
+}
+| NAME ',' symlist {
+    $$ = newsymlist($1, $3);
 }
 ;
 
-itemList: _BEGIN ITEMIZE itens _END ITEMIZE {
-    $$ = newast(NT_ITEMLIST, $3, NULL, NULL, NULL);
+calclist: /* vazio */
+| calclist stmt EOL {
+    printf("= %4.4g\n> ", eval($2));
+    treefree($2);
 }
-;
-
-itens: ITEM {
-    $$ = newitens(NT_ITENS, $1, NULL);
-} | ITEM itens {
-    $$ = newitens(NT_ITENS, $1, $2);
+| calclist LET NAME '(' symlist ')' '=' list EOL {
+    dodef($3, $5, $8);
+    printf("Defined %s\n>", $3->name);
+}
+| calclist error EOL {
+    yyerrok;
+    printf("> ");
 }
 ;

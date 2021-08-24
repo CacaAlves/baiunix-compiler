@@ -1,117 +1,121 @@
 %option noyywrap nodefault yylineno
 %{
-    #include "latex-to-markdown.h"    
-    #include "latex-to-markdown.tab.h"    
+    #include "baiunix-compiler.h"    
+    #include "baiunix-compiler.tab.h"    
 %}
 
-LETTER [a-zA-Z]
-WORD [a-zA-Z]+
-DIGIT [0-9]
-NUMBER [0-9]+
-SPACE " " 
+/* expoente float */
+EXP ([Ee][-+]?[0-9]+)
 
 %%
 
-"%".* // comentários são ignorados
-
-\\begin {
-    return _BEGIN;
+"+" |
+"-" |
+"*" |
+"/" |
+"=" |
+"," |
+";" |
+"(" |
+")" {
+    return yytext[0];
 }
 
-\\end {
-    return _END;
+"&&" {
+    return AND;
 }
 
-"{"document"}" {
-    return DOCUMENT;
+"||" {
+    return OR;
 }
 
-\\documentclass {
-    return CLASS;
+">" {
+    yylval.fn = 1; 
+    return CMP;
+}
+"<" {
+    yylval.fn = 2;
+    return CMP;
+}
+"<>" {
+    yylval.fn = 3;
+    return CMP;
+}
+"==" {
+    yylval.fn = 4;
+    return CMP;
+}
+">=" {
+    yylval.fn = 5;
+    return CMP;
+}
+"<=" {
+    yylval.fn = 6;
+    return CMP;
 }
 
-\\usepackage {
-    return PACKAGE;
+"if" {
+    return IF;
+}
+"then" {
+    return THEN;
+}
+"else" {
+    return ELSE;
+}
+"while" {
+    return WHILE;
+}
+"do" {
+    return DO;
+}
+"for" {
+    return FOR;
+}
+"let" {
+    return LET;
 }
 
-\\title {
-    return TITLE;
+"sqrt" {
+    yylval.fn = B_sqrt;
+    return FUNC;
+}
+"exp" {
+    yylval.fn = B_exp;
+    return FUNC;
+}
+"log" {
+    yylval.fn = B_log;
+    return FUNC;
+}
+"print" {
+    yylval.fn = B_print;
+    return FUNC;
 }
 
-\\author {
-    return AUTHOR;
-}
-
-\\chapter {
-    return CHAPTER;
-}
-
-\\section {
-    return SECTION;
-}
-
-\\subsection {
-    return SUBSECTION;
-}
-
-\\par {
-    return PAR;
-}
-
-\\bf {
-    return BF;
-}
-
-\\underline {
-    return UNDERLINE;
-}
-
-\\it {
-    return IT;
-}
-
-\\item" "["" "a-zA-Z0-9"\\"\.@\-"<"">""("")"","\''"!""?"";"":"]+ {
-    copystring(&yylval.string, &yytext[6], false);
-    return ITEM;
-}
-
-"{"enumerate"}" {
-    return ENUMERATE;
-}
-
-"{"itemize"}" {
-    return ITEMIZE;
-}
-
-
-
-"{"[a-zA-Z0-9"\\"\.@\n\-"<"">""("")"","\''"!""?"";"":"]+"}" {
-    copystring(&yylval.string, yytext, true);
+[a-zA-Z][a-zA-Z0-9]* {
+    yylval.s = lookup(yytext);
     return NAME;
 }
 
-"{"[a-zA-Z0-9" ""\\"\.@\n\-"<"">""("")"","\''"!""?"";"":"]+"}" {
-    copystring(&yylval.string, yytext, true);
-    return CONTENT;
+[0-9]+"."[0.9]*{EXP}? |
+"."?[0-9]+{EXP}? {
+    yylval.d = atof(yytext);
+    return NUMBER;
 }
 
-"["[a-zA-Z0-9"\\"\.@\n\-"<"">""("")"","\''"!""?"";"":"]+"]" {
-    copystring(&yylval.string, yytext, true);
-    return NAME;
+"//".*  /* ignora comentários */
+[ \t]   /* ignora espaço em branco */
+\\\n {
+    printf("c> ");
 }
 
-
-
-[a-zA-Z0-9\.@\-"<"">""("")"","\''"!""?"";"":"]+ {
-    copystring(&yylval.string, yytext, false);
-    return NAME;
+\n {
+    return EOL;
 }
 
-\t|\n|{SPACE} {
-    /* Ignora o espaço em branco */
-}
 . {
-    yyerror("Caracter não reconhecido %c\n", *yytext);
+    yyerror("Caracter desconhecido %c\n", *yytext);
 }
 
 %%

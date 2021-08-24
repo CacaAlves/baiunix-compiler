@@ -1,163 +1,157 @@
-#ifndef LATEX_TO_MARKDOWN
-#define LATEX_TO_MARKDOWN
+#ifndef BAIUNIX_COMPILER
+#define BAIUNIX_COMPILER
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 
-#define ELEMENT_PADDING "\n\n"
+/* declarações para uma calculadora avançada */
 
 /* interface com o lexer */
 
 extern int yylineno; /* do lexer */
-extern FILE *yyin;   /* do lexer */
 void yyerror(char *s, ...);
 
-char *outputfilename;
-FILE *output;
-
-int curChapter;
-int curSection;
-int curSubSection;
-
-enum NodeType
+/* tabela de símbolos */
+struct symbol 
 {
-    NT_DOCUMENT = 0,
-    NT_SETTINGS,
-    NT_CLASS,
-    NT_PACKAGE,
-    NT_IDENTIFICATION,
-    NT_MAIN,
-    NT_BEGIN,
-    NT_END,
-    NT_BODYLIST,
-    NT_CHAPTER,
-    NT_SUBSECTION,
-    NT_SECTION,
-    NT_BODY,
-    NT_TEXT,
-    NT_TEXTSTYLE,
-    NT_LIST,
-    NT_NUMBEREDLIST,
-    NT_ITEMLIST,
-    NT_ITENS
+    char *name;             /* nome de uma variável */
+    double value;       
+    struct ast *func;       /* stmt para a função */
+    struct symlist *syms;   /* lista de argumentos */
 };
 
-enum TextStyle
+/* tab. de símbolos de tamanho fixo */
+#define NHASH 9997
+struct symbol symtab[NHASH];
+
+struct symbol *lookup(char *);
+
+/* lista de símbolos, para uma lista de argumentos */
+struct symlist 
 {
-    TS_BOLD,
-    TS_ITALIC,
-    TS_UNDERLINE
+    struct symbol *sym;
+    struct symlist *next;
 };
 
-struct ast /* abstractic syntactic list */
+struct symlist *newsymlist(struct symbol *sym, struct symlist *next);
+void symlistfree(struct symlist *sl);
+
+/* tipos de nós
+* + - * /
+* 0-7 CMP, 04 igual, 02 menor que, 01 maior que
+* L expressão ou lista de comandos
+* I comando IF
+* W comando WHILE
+* O comando FOR
+* N symbol de referência
+* = atribuição
+* F chamada de função pré-definida
+* C chamada de função definida pelo usuário
+*/
+
+enum bifs /* funções pré-definidas */
 {
-    enum NodeType nodetype;
-    struct ast *n1;
-    struct ast *n2;
-    struct ast *n3;
-    struct ast *n4;
+    B_sqrt = 1,
+    B_exp,
+    B_log,
+    B_print
 };
 
-struct StructClass
+/* nós na AST */
+/* todos têm o "nodetype" inicial em comum */
+
+struct ast
 {
-    enum NodeType nodetype;
-    char *content1;
-    char *content2;
+    int nodetype;
+    struct ast *l;
+    struct ast *r;
 };
 
-struct StructPackage
+struct comp
 {
-    enum NodeType nodetype;
-    char *content1;
-    char *content2;
-    struct StructPackage *next;
-};
-
-struct StructIdentification
-{
-    enum NodeType nodetype;
-    char *title;
-    char *author;
-};
-
-struct StructBody
-{
-    enum NodeType nodetype;
-    char *content;
-    struct ast *n1;
-    struct ast *n2;
-};
-
-struct StructTextSubdivision
-{
-    enum NodeType nodetype;
-    char *content;
-    struct ast *n1;
-    struct ast *n2;
-};
-
-struct StructText
-{
-    enum NodeType nodetype;
-    char *content;
-    struct StructText *next;
-};
-
-struct StructTextStyle
-{
-    enum NodeType nodetype;
-    char *content;
-    enum TextStyle textStyle;
-};
-
-struct StructItens
-{
-    enum NodeType nodetype;
-    char *content;
+    int nodetype;
+    struct ast *l;
+    struct ast *r;
+    int op;
     struct ast *next;
 };
 
-struct StackChar
+struct fncall   /* funções pré-definidas */
 {
-    char data;
-    struct StackChar *next;
-} StackChar;
+    int nodetype;   /* tipo F */
+    struct ast *l;
+    enum bifs functype;
+};
+
+struct ufncall  /* funções de usuário */
+{
+    int nodetype;
+    struct ast *l;
+    struct symbol *s;
+};
+
+struct flow
+{
+    int nodetype;       /* tipo I ou W ou O*/
+    union
+    {
+        struct ast *cond;   /* condição */
+        struct ast *init;   /* declaração de variável para laço for*/        
+    };
+    union 
+    {
+        struct ast *tl;         /* ramo "then" ou list "do" */
+        struct ast * forcond;   /* condição para laço for */
+    };
+    union 
+    {
+        struct ast *el;     /* ramo opcional "else" */
+        struct ast *inc;    /* incremento de variável para laço for */
+    };
+    struct ast *forl;    /* ramo do laço for */
+};
+
+struct numval
+{
+    int nodetype;       /* tipo K */
+    double number;
+};
+
+struct symref
+{
+    int nodetype;       /* tipo N */
+    struct symbol *s;
+};
+
+struct symasgn
+{
+    int nodetype;       /* tipo = */
+    struct symbol *s;
+    struct ast *v;      /* valor a ser atribuído */
+};
 
 /* construção de uma ast */
-struct ast *newast(enum NodeType nodetype, struct ast *n1, struct ast *n2, struct ast *n3, struct ast *n4);
-struct ast *newclass(enum NodeType nodetype, char *content1, char *content2);
-struct ast *newpackage(enum NodeType nodetype, char *content1, char *content2, struct ast *next);
-struct ast *newidentification(enum NodeType nodetype, char *n1, char *n2);
-struct ast *newtextsubdivision(enum NodeType nodetype, char *content, struct ast *n1, struct ast *n2);
-struct ast *newtext(enum NodeType nodetype, char *content, struct ast *next);
-struct ast *newtextstyle(enum NodeType nodetype, char *content, enum TextStyle textStyle);
-struct ast *newitens(enum NodeType nodetype, char *content, struct ast *next);
+
+struct ast *newast(int nodetype, struct ast *l, struct ast *r); 
+struct ast *newcmp(int cmptype, struct ast *l, struct ast *r, struct ast *next, int nextOp);
+struct ast *newfunc(int functype, struct ast *l);
+struct ast *newcall(struct symbol *s, struct ast *l);
+struct ast *newref(struct symbol *s);
+struct ast *newasgn(struct symbol *s, struct ast *v);
+struct ast *newnum(double d);
+struct ast *newflow(int nodetype, struct ast *cond, struct ast *tl, struct ast *tr, struct ast *forl);
+
+/* definição de uma função */
+void dodef(struct symbol *name, struct symlist *syms, struct ast *stmts);
 
 /* avaliação de uma AST */
-void eval(struct ast *);
+double eval(struct ast *);
+
 /* deletar e liberar uma AST */
 void treefree(struct ast *);
-
-/* cria uma nova string e copia */
-void copystring(char **dest, char *src, bool takeOffBrackets);
-/* limpa o arquivo da saída do programa */
-void clearoutput();
-/* acrescenta uma string na saída do programa */
-void appendoutput(char *str);
-
-/* funções da stack */
-void push_stack_char(struct StackChar **stack, char data); /*Insere no final*/
-char top_stack_char(struct StackChar *stack);              /*Retorna o dado do último nó*/
-void pop_stack_char(struct StackChar **stack);             /*Remove no fim*/
-void print_stack_char(struct StackChar **stack);           /*Printa a stack*/
-bool is_empty_stack_char(struct StackChar *stack);         /*Return se está vazia*/
-
-/* funções para conversão número - string */
-char *number_to_str(long long int value);
-long long int str_to_number(const char *str);
-char *get_string(long long unsigned int value, bool isNegative);
 
 #endif
