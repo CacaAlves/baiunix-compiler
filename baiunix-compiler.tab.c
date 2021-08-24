@@ -527,7 +527,7 @@ static const yytype_uint8 yyrline[] =
        0,    36,    36,    39,    42,    45,    48,    51,    54,    62,
       63,    66,    69,    72,    75,    78,    81,    84,    87,    90,
       95,    98,   101,   106,   107,   112,   115,   120,   121,   125,
-     129
+     128
 };
 #endif
 
@@ -1550,7 +1550,7 @@ yyreduce:
   case 28:
 #line 121 "baiunix-compiler.y"
                     {
-    printf("= %4.4g\n> ", eval((yyvsp[-1].a)));
+    eval((yyvsp[-1].a));
     treefree((yyvsp[-1].a));
 }
 #line 1557 "baiunix-compiler.tab.c"
@@ -1560,22 +1560,20 @@ yyreduce:
 #line 125 "baiunix-compiler.y"
                                                  {
     dodef((yyvsp[-6].s), (yyvsp[-4].sl), (yyvsp[-1].a));
-    printf("Defined %s\n>", (yyvsp[-6].s)->name);
 }
-#line 1566 "baiunix-compiler.tab.c"
+#line 1565 "baiunix-compiler.tab.c"
     break;
 
   case 30:
-#line 129 "baiunix-compiler.y"
+#line 128 "baiunix-compiler.y"
                      {
     yyerrok;
-    printf("> ");
 }
-#line 1575 "baiunix-compiler.tab.c"
+#line 1573 "baiunix-compiler.tab.c"
     break;
 
 
-#line 1579 "baiunix-compiler.tab.c"
+#line 1577 "baiunix-compiler.tab.c"
 
       default: break;
     }

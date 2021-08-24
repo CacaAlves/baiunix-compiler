@@ -119,15 +119,13 @@ symlist: NAME {
 
 calclist: /* vazio */
 | calclist stmt EOL {
-    printf("= %4.4g\n> ", eval($2));
+    eval($2);
     treefree($2);
 }
 | calclist LET NAME '(' symlist ')' '=' list EOL {
     dodef($3, $5, $8);
-    printf("Defined %s\n>", $3->name);
 }
 | calclist error EOL {
     yyerrok;
-    printf("> ");
 }
 ;

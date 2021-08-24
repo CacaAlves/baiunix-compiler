@@ -489,7 +489,7 @@ static double callbuiltin(struct fncall *f)
     case B_log:
         return log(v);
     case B_print:
-        printf(" =%4.4g\n", v);
+        printf("%4.4g\n", v);
         return v;
     default:
         yyerror("Função pré-definida %d desconhecida\n", functype);
@@ -604,6 +604,14 @@ void yyerror(char *s, ...)
 
 int main(int argc, char **argv)
 {
-    printf("> ");
+     if (argc > 1)
+    {
+        if (!(yyin = fopen(argv[1], "r")))
+        {
+            perror(argv[1]);
+            return (1);
+        }
+    }
+    
     return yyparse();
 }

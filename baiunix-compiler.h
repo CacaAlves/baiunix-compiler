@@ -13,6 +13,7 @@
 /* interface com o lexer */
 
 extern int yylineno; /* do lexer */
+extern FILE *yyin;   /* do lexer */
 void yyerror(char *s, ...);
 
 /* tabela de símbolos */
